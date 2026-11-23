@@ -27,7 +27,8 @@
 <form method="post" action="/login" class="passcode-form">
   <input type="hidden" name="role" value="teacher">
   <label for="passcode">パスコード</label>
-  <input id="passcode" name="passcode" type="password" autocomplete="current-password" required>
+  <input id="passcode" name="passcode" type="password" autocomplete="current-password"
+    autocapitalize="none" autocorrect="off" spellcheck="false" required>
   <button class="mid-btn outline" type="submit">教員としてログイン</button>
 </form>
 {% endblock %}
