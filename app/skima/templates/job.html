@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ job.title }}｜スキマ日南{% endblock %}
+{% block content %}
+<p class="lead">近くでお手伝いの募集があります</p>
+
+<div class="card">
+  <h1 class="job-title">{{ job.title }}</h1>
+  {% if job.description %}<p>{{ job.description }}</p>{% endif %}
+  <dl class="facts">
+    <dt>日時</dt><dd>{{ date }} {{ time }}</dd>
+    <dt>人数</dt><dd>{{ job.headcount }}人</dd>
+    <dt>時給</dt><dd>{{ "{:,}".format(job.hourly_wage) }}円</dd>
+    <dt>場所</dt><dd>{{ job.area }}地区（陸上の作業）</dd>
+    <dt>重さ</dt><dd>1回 約{{ job.max_weight_kg }}kgまで</dd>
+  </dl>
+  <div class="tags">
+    {% if job.beginner_ok %}<span class="tag">🔰 初心者歓迎</span>{% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h2>持ち物・服装</h2>
+  <ul class="checklist">{% for item in job.items %}<li>☐ {{ item }}</li>{% endfor %}</ul>
+  <h2>安全のための注意</h2>
+  <ul class="cautions">{% for c in job.cautions %}<li>⚠ {{ c }}</li>{% endfor %}</ul>
+</div>
+
+<button class="big-btn green" type="button" disabled title="第2週に実装">応募する（準備中）</button>
+
+<aside class="stat-hint">
+  <h2>日南の統計ひとこと</h2>
+  <p>{{ hint }}</p>
+  <p><strong>{{ closing }}</strong></p>
+  <p class="source">出典：{{ source }}</p>
+</aside>
+{% endblock %}

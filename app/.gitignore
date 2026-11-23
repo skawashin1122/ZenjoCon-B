@@ -1,0 +1,7 @@
+# 秘密情報（APIキーなど）は絶対にGitに入れない
+.env
+.venv/
+__pycache__/
+*.pyc
+*.db
+.pytest_cache/

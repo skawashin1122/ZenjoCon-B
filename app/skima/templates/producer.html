@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}求人をつくる｜スキマ日南{% endblock %}
+{% block header_extra %}{% if mock_ai %}<span class="mock-tag">テスト用の仮AI</span>{% endif %}{% endblock %}
+{% block content %}
+
+<!-- ① はじめの画面：ボタンは2つだけ -->
+<section id="step-home">
+  <p class="lead">お手伝いを頼みたい作業を教えてください</p>
+
+  <input id="photo-input" type="file" accept="image/*" capture="environment" hidden>
+  <button id="btn-photo" class="big-btn green" type="button">
+    <span class="icon" aria-hidden="true">📷</span>写真をとる
+  </button>
+  <div id="photo-preview" class="photo-preview" hidden>
+    <img id="photo-img" alt="とった写真">
+    <span>写真OK ✓</span>
+  </div>
+
+  <button id="btn-talk" class="big-btn blue" type="button">
+    <span class="icon" aria-hidden="true">🎤</span><span id="talk-label">話して伝える</span>
+  </button>
+  <p id="rec-status" class="rec-status" role="status" hidden></p>
+
+  <p class="hint">日南弁でだいじょうぶ。<br>例：「明日の朝8時から2人、ミカン箱の積み込み」</p>
+  <p class="hint small">※ 人の顔や車のナンバーは写さないでください</p>
+</section>
+
+<!-- AIが考えている間 -->
+<section id="step-loading" hidden>
+  <div class="loading"><div class="spinner" aria-hidden="true"></div>
+    <p class="lead">AIが下書きを作っています…</p></div>
+</section>
+
+<!-- ② 下書きの確認 -->
+<section id="step-draft" hidden>
+  <span class="badge">AIによる下書き</span>
+  <div class="card" id="draft-card"></div>
+
+  <div id="draft-errors" class="alert" role="alert" hidden></div>
+
+  <div id="draft-question" class="question" hidden>
+    <p><span aria-hidden="true">❓</span> <span id="question-text"></span></p>
+    <button id="btn-answer" class="mid-btn blue" type="button">🎤 <span id="answer-label">話して答える</span></button>
+  </div>
+
+  <button id="btn-publish" class="big-btn green" type="button">これで公開</button>
+  <button id="btn-retry" class="mid-btn outline" type="button">もう一度話す</button>
+  <button id="btn-speak" class="link-btn" type="button">🔊 内容を読み上げる</button>
+</section>
+
+<!-- ③ 公開できた -->
+<section id="step-done" hidden>
+  <div class="done">
+    <p class="done-mark" aria-hidden="true">✓</p>
+    <p class="lead">公開しました</p>
+    <p id="done-note"></p>
+    <a id="done-link" class="mid-btn outline" href="#">学生に届く画面を見る</a>
+    <button id="btn-new" class="mid-btn outline" type="button">べつの求人をつくる</button>
+  </div>
+</section>
+
+<p id="error-msg" class="alert" role="alert" hidden></p>
+{% endblock %}
+{% block scripts %}<script src="/static/producer.js?v=2"></script>{% endblock %}
