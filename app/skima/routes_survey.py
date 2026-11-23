@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .auth import CurrentUser, current_user, require_teacher
+from .config import Settings, get_settings
 from .db import get_db
 from .models import Application, Job, Survey
 from .results import QUESTIONS, SCALE, jobs_csv, summarize
@@ -62,8 +63,13 @@ def answer_survey(job_id: int, answer: Answer, request: Request, db: Session = D
 
 
 @router.get("/teacher/results")
-def results_page(request: Request, user: CurrentUser = Depends(require_teacher), db: Session = Depends(get_db)):
-    return render(request, "results.html", s=summarize(db), questions=QUESTIONS)
+def results_page(
+    request: Request,
+    user: CurrentUser = Depends(require_teacher),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    return render(request, "results.html", s=summarize(db), questions=QUESTIONS, demo_mode=settings.demo_mode)
 
 
 @router.get("/teacher/results.csv")

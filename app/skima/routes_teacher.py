@@ -7,7 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .auth import CurrentUser, require_teacher
+from .config import Settings, get_settings
 from .db import get_db
+from .demo import refresh_slots, reset_for_demo
 from .jobs import date_text, time_text
 from .models import Application, Approval, Job, Student
 from .web import render
@@ -84,3 +86,23 @@ def revoke(student_id: int, user: CurrentUser = Depends(require_teacher), db: Se
     a.approved_by = None
     db.commit()
     return _status(a)
+
+
+# ---------------- 本番デモの準備 ----------------
+
+@router.post("/api/teacher/demo/refresh-slots")
+def demo_refresh_slots(user: CurrentUser = Depends(require_teacher), db: Session = Depends(get_db)):
+    """デモ生徒の空き時間を「今日から2週間」に更新する（記録は消さない）。"""
+    return {"students": refresh_slots(db)}
+
+
+@router.post("/api/teacher/demo/reset")
+def demo_reset(
+    user: CurrentUser = Depends(require_teacher),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    """求人・案内・通知・アンケートを消して、デモの最初の状態に戻す。DEMO_MODE=true のときだけ。"""
+    if not settings.demo_mode:
+        raise HTTPException(403, "DEMO_MODE が false のため使えません")
+    return reset_for_demo(db)

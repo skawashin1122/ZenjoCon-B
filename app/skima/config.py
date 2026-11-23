@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     # 友だち追加のURL（例: https://line.me/R/ti/p/@xxxx）。画面に「友だち追加」ボタンを出す
     line_bot_url: str = ""
 
+    # 本選デモ用の「データを最初の状態に戻す」ボタンを使えるようにする（試用テスト中は false）
+    demo_mode: bool = False
+
     # S3（写真・音声の一時保存）。空ならパソコンのフォルダで代用
     s3_bucket: str = ""
     aws_region: str = "us-east-1"

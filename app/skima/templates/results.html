@@ -49,4 +49,27 @@
 
 <a class="mid-btn outline" href="/teacher/results.csv" style="margin-top:24px">CSVでダウンロード（求人ごとの計測値）</a>
 <a class="mid-btn outline" href="/teacher">承認の画面へ戻る</a>
+
+<h2 class="section-title">本番デモの準備</h2>
+<p class="hint small">デモ生徒（生徒A〜D）の空き時間を「今日から2週間・毎朝6〜12時」にします。記録は消えません。</p>
+<button class="mid-btn outline" type="button" id="demo-slots">空き時間を今日からに更新</button>
+{% if demo_mode %}
+<p class="alert">下のボタンは、求人・案内・お知らせ・アンケートを<strong>すべて消して</strong>、デモの最初の状態（承認済みは生徒AとD）に戻します。試用テストの記録も消えるので、先に「CSVでダウンロード」で保存してください。LINEのつながりは残ります。</p>
+<button class="mid-btn outline" type="button" id="demo-reset">デモ用に最初の状態へ戻す</button>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  document.getElementById("demo-slots").addEventListener("click", async () => {
+    const r = await skima.send("/api/teacher/demo/refresh-slots");
+    if (r) alert(`生徒${r.students}人の空き時間を更新しました`);
+  });
+  const reset = document.getElementById("demo-reset");
+  if (reset) reset.addEventListener("click", async () => {
+    if (!confirm("求人・案内・お知らせ・アンケートをすべて消します。CSVは保存しましたか？")) return;
+    if (!confirm("本当に消しますか？ 元に戻せません。")) return;
+    const r = await skima.send("/api/teacher/demo/reset");
+    if (r) { alert(`消しました（求人${r.jobs}件・アンケート${r.surveys}件）`); location.reload(); }
+  });
+</script>
 {% endblock %}
