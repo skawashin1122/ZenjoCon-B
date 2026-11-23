@@ -1,0 +1,24 @@
+# systemd：サーバーのプログラムが止まっても自動で再起動する
+# 置き場所: /etc/systemd/system/skima.service
+[Unit]
+Description=Skima Nichinan (FastAPI)
+After=network.target postgresql.service
+
+[Service]
+User=skima
+Group=skima
+WorkingDirectory=/opt/skima/app
+EnvironmentFile=/opt/skima/app/.env
+# Gunicorn が Uvicorn のワーカーを2つ動かす（t3.small 想定）
+ExecStart=/opt/skima/app/.venv/bin/gunicorn skima.main:app \
+    --workers 2 --worker-class uvicorn.workers.UvicornWorker \
+    --bind 127.0.0.1:8000 --timeout 90
+Restart=always
+RestartSec=3
+# 安全のため、プログラムができることを絞る
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

@@ -8,13 +8,14 @@
   {% if job.description %}<p>{{ job.description }}</p>{% endif %}
   <dl class="facts">
     <dt>日時</dt><dd>{{ date }} {{ time }}</dd>
-    <dt>人数</dt><dd>{{ job.headcount }}人</dd>
+    <dt>人数</dt><dd>{{ job.headcount }}人（参加決定 {{ job.confirmed_count }}人）</dd>
     <dt>時給</dt><dd>{{ "{:,}".format(job.hourly_wage) }}円</dd>
     <dt>場所</dt><dd>{{ job.area }}地区（陸上の作業）</dd>
     <dt>重さ</dt><dd>1回 約{{ job.max_weight_kg }}kgまで</dd>
   </dl>
   <div class="tags">
     {% if job.beginner_ok %}<span class="tag">🔰 初心者歓迎</span>{% endif %}
+    {% if job.status == "closed" %}<span class="tag gray">締切</span>{% endif %}
   </div>
 </div>
 
@@ -25,7 +26,19 @@
   <ul class="cautions">{% for c in job.cautions %}<li>⚠ {{ c }}</li>{% endfor %}</ul>
 </div>
 
-<button class="big-btn green" type="button" disabled title="第2週に実装">応募する（準備中）</button>
+{% if app %}
+  {% if app.status == "confirmed" %}
+    <p class="ok-box">✓ 参加が決まっています</p>
+    <button class="mid-btn outline" type="button" data-cancel="{{ app.id }}">参加をキャンセルする</button>
+  {% elif app.status == "notified" and job.status == "published" %}
+    <button class="big-btn green" type="button" data-confirm="{{ app.id }}">参加する</button>
+    <p class="hint small">先着順です。押した時点で定員に空きがあれば参加が決まります。</p>
+  {% elif app.status == "cancelled" %}
+    <p class="hint">この求人はキャンセルしました。</p>
+  {% else %}
+    <p class="hint">定員に達したため締め切りました。</p>
+  {% endif %}
+{% endif %}
 
 <aside class="stat-hint">
   <h2>日南の統計ひとこと</h2>
@@ -34,3 +47,4 @@
   <p class="source">出典：{{ source }}</p>
 </aside>
 {% endblock %}
+{% block scripts %}<script src="/static/student.js?v={{ v }}"></script>{% endblock %}

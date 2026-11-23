@@ -3,45 +3,55 @@
 起動: uvicorn skima.main:app --reload
 """
 import logging
+import secrets
 from contextlib import asynccontextmanager
-from datetime import date, datetime
-from pathlib import Path
+from datetime import date, datetime, timedelta
 
-from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, Form, Request
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.middleware.sessions import SessionMiddleware
 
-from . import ai, rules, stats
-from .config import Settings, get_settings
-from .db import Base, SessionLocal, engine, get_db
-from .jobs import apply_draft, date_text, draft_from_job, speech_text, time_text
-from .models import Approval, Job, Producer, Student
+from . import auth
+from .config import get_settings
+from .db import Base, SessionLocal, engine
+from .models import Approval, Producer, Student
+from .routes_producer import router as producer_router
+from .routes_student import router as student_router
+from .routes_teacher import router as teacher_router
+from .web import BASE_DIR, render
 
 logging.basicConfig(level=logging.INFO)
-BASE_DIR = Path(__file__).parent
-DEMO_PRODUCER_ID = 1  # ログイン機能は第2週。それまではデモ用の生産者1人で動かす
+log = logging.getLogger(__name__)
+settings = get_settings()
 
 
 def seed(db: Session) -> None:
     """デモ用の架空データ（実在の人の情報は入れない）。"""
-    if db.get(Producer, DEMO_PRODUCER_ID):
+    if db.scalar(select(Producer).limit(1)):
         return
-    db.add(Producer(id=DEMO_PRODUCER_ID, name="デモ農家", area="北郷"))
+    db.add(Producer(name="デモ農家", area="北郷"))
+    # 空き時間：今日から2週間、毎朝6〜12時
+    slots = [
+        {"date": (date.today() + timedelta(days=i)).isoformat(), "start": "06:00", "end": "12:00"} for i in range(14)
+    ]
     students = [
-        Student(nickname="生徒A", grade=2, area="北郷", experience_count=1),
-        Student(nickname="生徒B", grade=2, area="飫肥", experience_count=0),
-        Student(nickname="生徒C", grade=1, area="南郷", experience_count=0),
+        Student(nickname="生徒A", grade=2, area="北郷", experience_count=1, available_slots=slots),
+        Student(nickname="生徒B", grade=2, area="飫肥", experience_count=0, available_slots=slots),
+        Student(nickname="生徒C", grade=1, area="南郷", experience_count=0, available_slots=slots),
+        Student(nickname="生徒D", grade=3, area="飫肥", experience_count=0, available_slots=slots),
     ]
     db.add_all(students)
     db.flush()
+    now = datetime.now()
     db.add_all(
         [
-            Approval(student_id=students[0].id, parent_consent=True, school_permission=True,
-                     approved_by="デモ教員", approved_at=datetime.now()),
+            Approval(student_id=students[0].id, parent_consent=True, school_permission=True, approved_by="デモ教員", approved_at=now),
             Approval(student_id=students[1].id, parent_consent=True, school_permission=False),
             Approval(student_id=students[2].id, parent_consent=False, school_permission=False),
+            Approval(student_id=students[3].id, parent_consent=True, school_permission=True, approved_by="デモ教員", approved_at=now),
         ]
     )
     db.commit()
@@ -52,173 +62,67 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
         seed(db)
+    if settings.teacher_passcode == "demo-teacher":
+        log.warning("教員パスコードが初期値のままです。EC2では .env の TEACHER_PASSCODE を変更してください。")
     yield
 
 
 app = FastAPI(title="スキマ日南ファーム＆シー", lifespan=lifespan)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.secret_key or secrets.token_urlsafe(32),
+    same_site="lax",  # ほかのサイトからの送信にはログイン情報を付けない
+    https_only=settings.base_url.startswith("https://"),
+    max_age=60 * 60 * 24 * 14,
+)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+app.include_router(producer_router)
+app.include_router(student_router)
+app.include_router(teacher_router)
 
 
-# ---------------- 共通処理 ----------------
-
-async def read_upload(file: UploadFile | None, kind: str, settings: Settings) -> ai.Media | None:
-    """アップロードされたファイルを確認して読み込む。ファイルはディスクに保存しない。"""
-    if file is None or not file.filename:
-        return None
-    mime = (file.content_type or "").split(";")[0]
-    if not mime.startswith(kind + "/"):
-        raise HTTPException(400, f"{kind} のファイルではありません")
-    data = await file.read()
-    if len(data) > settings.max_upload_bytes:
-        raise HTTPException(413, "ファイルが大きすぎます")
-    if not data:
-        return None
-    return ai.Media(data=data, mime_type=mime)
+@app.exception_handler(auth.LoginRequired)
+def to_login(request: Request, exc: auth.LoginRequired):
+    return RedirectResponse("/login", status_code=303)
 
 
-def draft_response(job: Job, settings: Settings) -> dict:
-    """画面に返す内容：下書き・足りない項目・質問・エラー・読み上げ文。"""
-    draft = draft_from_job(job)
-    missing = rules.missing_fields(draft)
-    errors = [e.message for e in rules.validate_for_publish(draft, settings.min_wage)]
-    question = rules.follow_up_question(missing)
-    speech = speech_text(draft)
-    if errors:
-        speech += " " + " ".join(errors)
-    elif question:
-        speech += " " + question
-    return {
-        "job_id": job.id,
-        "status": job.status,
-        "draft": draft.model_dump(mode="json"),
-        "display": {
-            "date": date_text(job.work_date),
-            "time": f"{time_text(job.start_time)}〜{time_text(job.end_time)}",
-        },
-        "missing": missing,
-        "question": question,
-        "errors": errors,
-        "can_publish": not missing and not errors,
-        "speech": speech,
-        "mock_ai": settings.use_mock_ai,
-    }
+HOME = {"producer": "/producer", "student": "/student", "teacher": "/teacher"}
 
-
-def get_own_job(db: Session, job_id: int) -> Job:
-    job = db.get(Job, job_id)
-    if job is None or job.producer_id != DEMO_PRODUCER_ID:
-        raise HTTPException(404, "求人が見つかりません")
-    return job
-
-
-# ---------------- 画面 ----------------
 
 @app.get("/", include_in_schema=False)
-def index():
-    return RedirectResponse("/producer")
+def index(request: Request):
+    user = auth.current_user(request)
+    return RedirectResponse(HOME[user.role] if user else "/login")
 
 
-@app.get("/producer", response_class=HTMLResponse)
-def producer_home(request: Request, settings: Settings = Depends(get_settings)):
-    return templates.TemplateResponse(request, "producer.html", {"mock_ai": settings.use_mock_ai})
+@app.get("/login")
+def login_page(request: Request, error: str | None = None):
+    with SessionLocal() as db:
+        producers = list(db.scalars(select(Producer).order_by(Producer.id)))
+        students = list(db.scalars(select(Student).order_by(Student.id)))
+    return render(request, "login.html", producers=producers, students=students, error=error)
 
 
-@app.get("/jobs/{job_id}", response_class=HTMLResponse)
-def job_card(job_id: int, request: Request, db: Session = Depends(get_db)):
-    """学生が見る求人カード（LINEのリンク先）。公開済みのものだけ表示する。"""
-    job = db.get(Job, job_id)
-    if job is None or job.status != "published":
-        raise HTTPException(404, "求人が見つかりません")
-    return templates.TemplateResponse(
-        request,
-        "job.html",
-        {
-            "job": job,
-            "date": date_text(job.work_date),
-            "time": f"{time_text(job.start_time)}〜{time_text(job.end_time)}",
-            "hint": stats.hint_for(job.industry, seed=job.id),
-            "closing": stats.CLOSING,
-            "source": stats.SOURCE,
-        },
-    )
+@app.post("/login")
+def login_submit(request: Request, role: str = Form(...), user_id: int = Form(0), passcode: str = Form("")):
+    with SessionLocal() as db:
+        if role == "producer" and (p := db.get(Producer, user_id)):
+            auth.login(request, "producer", p.id, p.name)
+        elif role == "student" and (s := db.get(Student, user_id)):
+            auth.login(request, "student", s.id, s.nickname)
+        elif role == "teacher" and secrets.compare_digest(passcode, settings.teacher_passcode):
+            auth.login(request, "teacher", 0, "教員")
+        else:
+            return RedirectResponse("/login?error=1", status_code=303)
+    return RedirectResponse(HOME[role], status_code=303)
 
 
-# ---------------- API ----------------
+@app.post("/logout")
+def logout(request: Request):
+    auth.logout(request)
+    return RedirectResponse("/login", status_code=303)
+
 
 @app.get("/api/health")
 def health():
     return {"ok": True}
-
-
-@app.post("/api/drafts")
-async def create_draft(
-    photo: UploadFile | None = File(None),
-    audio: UploadFile | None = File(None),
-    db: Session = Depends(get_db),
-    settings: Settings = Depends(get_settings),
-):
-    """① 写真＋音声 → AIで下書きを作る。"""
-    image = await read_upload(photo, "image", settings)
-    voice = await read_upload(audio, "audio", settings)
-    if image is None and voice is None:
-        raise HTTPException(400, "写真か声を送ってください")
-    try:
-        draft = ai.generate_draft(settings, image, voice, date.today())
-    except ai.AIError:
-        raise HTTPException(502, "うまく聞き取れませんでした。もう一度話してください。")
-    # 写真・音声はここで使い終わり。保存せずに捨てる（プライバシー保護）
-    job = Job(producer_id=DEMO_PRODUCER_ID, status="draft")
-    apply_draft(job, draft)
-    db.add(job)
-    db.commit()
-    return draft_response(job, settings)
-
-
-@app.post("/api/jobs/{job_id}/answer")
-async def answer_question(
-    job_id: int,
-    audio: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    settings: Settings = Depends(get_settings),
-):
-    """② 足りない項目を声で答える → 下書きを更新する。"""
-    job = get_own_job(db, job_id)
-    if job.status != "draft":
-        raise HTTPException(409, "公開済みの求人は変更できません")
-    voice = await read_upload(audio, "audio", settings)
-    if voice is None:
-        raise HTTPException(400, "声を送ってください")
-    try:
-        draft = ai.refine_draft(settings, draft_from_job(job), voice, date.today())
-    except ai.AIError:
-        raise HTTPException(502, "うまく聞き取れませんでした。もう一度話してください。")
-    apply_draft(job, draft)
-    db.commit()
-    return draft_response(job, settings)
-
-
-@app.post("/api/jobs/{job_id}/publish")
-def publish(job_id: int, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
-    """③ 生産者が「これで公開」を押した。公開前にもう一度ルールで確認する。"""
-    job = get_own_job(db, job_id)
-    draft = draft_from_job(job)
-    if rules.missing_fields(draft) or rules.validate_for_publish(draft, settings.min_wage):
-        raise HTTPException(422, "まだ公開できません")
-    if job.status == "draft":
-        job.status = "published"
-        job.published_at = datetime.now()
-        db.commit()
-    blockers = rules.high_school_blockers(job.start_time, job.end_time, job.max_weight_kg, job.location_type)
-    return {
-        "job_id": job.id,
-        "status": job.status,
-        "url": f"/jobs/{job.id}",
-        "visible_to_high_school": not blockers,
-        "high_school_blockers": blockers,
-    }
-
-
-@app.get("/api/jobs/{job_id}")
-def get_job(job_id: int, db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
-    return draft_response(get_own_job(db, job_id), settings)

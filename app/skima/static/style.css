@@ -89,3 +89,47 @@ button, .mid-btn { font-family: inherit; cursor: pointer; }
 .stat-hint h2 { font-size: 18px; margin: 0 0 8px; }
 .stat-hint p { margin: 0 0 6px; }
 .source { font-size: 14px; color: var(--muted); }
+
+/* ---- 第2週：ログイン・高校生・教員の画面 ---- */
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.who { font-weight: 700; }
+.inline { display: inline; margin: 0; }
+.small-btn { min-height: 40px; padding: 4px 12px; font-size: 16px; border: 2px solid var(--text); background: #fff; border-radius: 8px; }
+.mid-btn.green { background: var(--green); color: #fff; }
+.muted { color: var(--muted); }
+.section-title { display: flex; align-items: center; gap: 8px; font-size: 20px; margin: 28px 0 12px; padding-bottom: 4px; border-bottom: 2px solid var(--line); }
+.role-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; color: #fff; font-size: 18px; }
+.role-icon.green { background: var(--green); }
+.role-icon.blue { background: var(--blue); }
+.role-icon.yellow { background: #e3a400; color: #1a1a1a; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.passcode-form label { display: block; font-weight: 700; margin-bottom: 4px; }
+.passcode-form input { width: 100%; min-height: 52px; font-size: 20px; padding: 8px 12px; border: 2px solid var(--text); border-radius: 10px; margin-bottom: 12px; }
+
+.notice-list, .job-list, .slot-list, .chat { list-style: none; padding: 0; margin: 0; }
+.notice-list li, .job-list li { padding: 10px 0; border-bottom: 1px solid var(--line); white-space: pre-line; }
+.job-list li { display: flex; flex-direction: column; gap: 2px; white-space: normal; }
+.job-list a { font-weight: 700; color: var(--blue); }
+.notice-time { display: block; font-size: 14px; color: var(--muted); }
+
+/* LINE風のお知らせ */
+.chat { display: flex; flex-direction: column; gap: 12px; }
+.bubble { background: #e9f7ee; border: 1px solid #9fd3b2; border-radius: 4px 16px 16px 16px; padding: 12px; }
+.bubble p { margin: 0 0 8px; white-space: pre-line; }
+.bubble .mid-btn { margin-bottom: 6px; }
+
+.ok-box { background: #e9f7ee; border: 2px solid var(--green); color: var(--green); font-weight: 700; font-size: 20px; text-align: center; border-radius: 12px; padding: 12px; }
+.tag.gray { border-color: #5f6360; color: #5f6360; }
+
+.approval-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.approval-head .state { margin-left: auto; font-weight: 700; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 48px; font-size: 18px; }
+.check input { width: 28px; height: 28px; }
+
+.slot-list li { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.slot-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-top: 12px; }
+.slot-form label { display: flex; flex-direction: column; font-weight: 700; font-size: 16px; }
+.slot-form label:first-child, .slot-form button { grid-column: 1 / -1; }
+.slot-form input { min-height: 48px; font-size: 18px; padding: 4px 8px; border: 2px solid var(--text); border-radius: 8px; }
+
+.toast { position: fixed; left: 16px; right: 16px; bottom: 16px; max-width: 448px; margin: 0 auto; z-index: 10; }

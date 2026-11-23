@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}ログイン｜スキマ日南{% endblock %}
+{% block content %}
+<p class="lead">だれが使いますか？</p>
+<p class="hint small">※ 本選デモ用のログイン画面です（登場する人はすべて架空）</p>
+{% if error %}<p class="alert">ログインできませんでした。パスコードを確かめてください。</p>{% endif %}
+
+<h2 class="section-title"><span class="role-icon green" aria-hidden="true">生</span>生産者</h2>
+{% for p in producers %}
+<form method="post" action="/login">
+  <input type="hidden" name="role" value="producer"><input type="hidden" name="user_id" value="{{ p.id }}">
+  <button class="mid-btn green" type="submit">{{ p.name }}（{{ p.area }}）</button>
+</form>
+{% endfor %}
+
+<h2 class="section-title"><span class="role-icon blue" aria-hidden="true">高</span>高校生</h2>
+<div class="grid-2">
+{% for s in students %}
+<form method="post" action="/login">
+  <input type="hidden" name="role" value="student"><input type="hidden" name="user_id" value="{{ s.id }}">
+  <button class="mid-btn blue" type="submit">{{ s.nickname }}</button>
+</form>
+{% endfor %}
+</div>
+
+<h2 class="section-title"><span class="role-icon yellow" aria-hidden="true">教</span>教員</h2>
+<form method="post" action="/login" class="passcode-form">
+  <input type="hidden" name="role" value="teacher">
+  <label for="passcode">パスコード</label>
+  <input id="passcode" name="passcode" type="password" autocomplete="current-password" required>
+  <button class="mid-btn outline" type="submit">教員としてログイン</button>
+</form>
+{% endblock %}

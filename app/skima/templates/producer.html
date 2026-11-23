@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block title %}求人をつくる｜スキマ日南{% endblock %}
-{% block header_extra %}{% if mock_ai %}<span class="mock-tag">テスト用の仮AI</span>{% endif %}{% endblock %}
 {% block content %}
 
 <!-- ① はじめの画面：ボタンは2つだけ -->
@@ -23,6 +22,24 @@
 
   <p class="hint">日南弁でだいじょうぶ。<br>例：「明日の朝8時から2人、ミカン箱の積み込み」</p>
   <p class="hint small">※ 人の顔や車のナンバーは写さないでください</p>
+
+  {% if notices %}
+  <h2 class="section-title">お知らせ</h2>
+  <ul class="notice-list">
+    {% for n in notices %}<li><span class="notice-time">{{ n.created_at.strftime("%m/%d %H:%M") }}</span>{{ n.text }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if jobs %}
+  <h2 class="section-title">出した求人</h2>
+  <ul class="job-list">
+    {% for j in jobs %}
+    <li><a href="/jobs/{{ j.id }}">{{ j.title }}</a>
+      <span>{{ date_text(j.work_date) }}・参加 {{ j.confirmed_count }}/{{ j.headcount }}人
+      {% if j.status == "closed" %}<strong>（締切）</strong>{% else %}（募集中）{% endif %}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 </section>
 
 <!-- AIが考えている間 -->
@@ -59,6 +76,5 @@
   </div>
 </section>
 
-<p id="error-msg" class="alert" role="alert" hidden></p>
 {% endblock %}
-{% block scripts %}<script src="/static/producer.js?v=2"></script>{% endblock %}
+{% block scripts %}<script src="/static/producer.js?v={{ v }}"></script>{% endblock %}

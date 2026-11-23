@@ -4,13 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}スキマ日南{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css?v=2">
+  <link rel="stylesheet" href="/static/style.css?v={{ v }}">
 </head>
 <body>
-  <header class="topbar"><span class="brand">スキマ日南</span>{% block header_extra %}{% endblock %}</header>
+  <header class="topbar">
+    <span class="brand">スキマ日南</span>
+    <span class="topbar-right">
+      {% if mock_ai and user and user.role == "producer" %}<span class="mock-tag">テスト用の仮AI</span>{% endif %}
+      {% if user %}
+        <span class="who">{{ user.name }}</span>
+        <form method="post" action="/logout" class="inline"><button class="small-btn" type="submit">ログアウト</button></form>
+      {% endif %}
+    </span>
+  </header>
   <main class="page">
     {% block content %}{% endblock %}
   </main>
+  <p id="error-msg" class="alert toast" role="alert" hidden></p>
+  <script src="/static/common.js?v={{ v }}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

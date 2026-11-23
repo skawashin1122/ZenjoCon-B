@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}お知らせ｜スキマ日南{% endblock %}
+{% block content %}
+{% if not approved %}
+<p class="alert">まだ参加の承認がありません。保護者の同意と学校の許可がそろうと、先生が承認します。承認されるまで求人は届きません。</p>
+{% endif %}
+
+<h2 class="section-title">お知らせ</h2>
+{% if notices %}
+<ul class="chat">
+  {% for n in notices %}
+  <li class="bubble">
+    <p>{{ n.text }}</p>
+    {% if n.url %}<a class="mid-btn green" href="{{ n.url }}">くわしく見る・参加する</a>{% endif %}
+    <span class="notice-time">{{ n.created_at.strftime("%m/%d %H:%M") }}{% if n.sent_via_line %}・LINEで送信{% endif %}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="hint">まだお知らせはありません</p>
+{% endif %}
+
+<h2 class="section-title">参加が決まっている作業</h2>
+{% set confirmed = offers | selectattr("status", "equalto", "confirmed") | list %}
+{% if confirmed %}
+<ul class="job-list">
+  {% for a in confirmed %}
+  <li><a href="/jobs/{{ a.job.id }}">{{ a.job.title }}</a>
+    <span>{{ date_text(a.job.work_date) }} {{ time_text(a.job.start_time) }}〜{{ time_text(a.job.end_time) }}・{{ a.job.area }}地区</span></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="hint">まだありません</p>
+{% endif %}
+
+<h2 class="section-title">空き時間</h2>
+<p class="hint small">この時間にすっぽり入る作業だけが届きます。</p>
+<ul class="slot-list" id="slot-list">
+  {% for s in slots %}
+  <li>{{ s.date[5:].replace("-", "/") }} {{ s.start }}〜{{ s.end }}
+    <button class="small-btn" type="button" data-del='{{ s | tojson }}' aria-label="{{ s.date }} {{ s.start }}〜{{ s.end }} を消す">消す</button></li>
+  {% endfor %}
+</ul>
+<form id="slot-form" class="slot-form">
+  <label>日にち <input type="date" name="date" required></label>
+  <label>から <input type="time" name="start" value="06:00" required></label>
+  <label>まで <input type="time" name="end" value="12:00" required></label>
+  <button class="mid-btn blue" type="submit">空き時間を追加</button>
+</form>
+{% endblock %}
+{% block scripts %}<script src="/static/student.js?v={{ v }}"></script>{% endblock %}

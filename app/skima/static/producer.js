@@ -193,9 +193,13 @@
     const data = await post(`/api/jobs/${currentJob.job_id}/publish`, new FormData());
     if (!data) return;
     $("done-link").href = data.url;
-    $("done-note").textContent = data.visible_to_high_school
-      ? "条件に合う高校生に案内が届きます。"
-      : "この作業は高校生には表示されません（" + data.high_school_blockers.join("・") + "）。";
+    if (!data.visible_to_high_school) {
+      $("done-note").textContent = "この作業は高校生には案内しません（" + data.high_school_blockers.join("・") + "）。";
+    } else if (data.offered > 0) {
+      $("done-note").textContent = `条件に合う高校生${data.offered}人に案内を送りました。参加が決まったらお知らせします。`;
+    } else {
+      $("done-note").textContent = "いま条件に合う高校生がいません（承認・空き時間・場所の条件）。";
+    }
     show("done");
     speak("公開しました。" + $("done-note").textContent);
   });
@@ -208,5 +212,5 @@
     show("home");
   }
   $("btn-retry").addEventListener("click", reset);
-  $("btn-new").addEventListener("click", reset);
+  $("btn-new").addEventListener("click", () => location.reload()); // 求人の一覧も新しくする
 })();

@@ -86,15 +86,17 @@ def _call_gemini(settings: Settings, prompt: str, image: Media | None, audio: Me
         temperature=0.2,
     )
 
+    # 1回目はいつものモデル、失敗したら予備のモデルでもう1回（混雑していることがあるため）
+    models = [settings.gemini_model, settings.gemini_fallback_model or settings.gemini_model]
     last_error: Exception | None = None
-    for attempt in range(2):  # 失敗したら1回だけやり直す
+    for attempt, model in enumerate(models, start=1):
         try:
-            response = client.models.generate_content(model=settings.gemini_model, contents=contents, config=config)
+            response = client.models.generate_content(model=model, contents=contents, config=config)
             # 返ってきたJSONを Pydantic で型チェックする（形が違えばここでエラー）
             return JobDraft.model_validate_json(response.text)
-        except Exception as e:  # 通信エラー・形式エラーなど
+        except Exception as e:  # 通信エラー・混雑・形式エラーなど
             last_error = e
-            log.warning("Gemini 呼び出し失敗（%d回目）: %s", attempt + 1, e)
+            log.warning("Gemini 呼び出し失敗（%d回目・%s）: %s", attempt, model, str(e)[:200])
     raise AIError("下書きを作れませんでした") from last_error
 
 

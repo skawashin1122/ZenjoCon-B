@@ -76,6 +76,8 @@ class Job(Base):
     items: Mapped[list] = mapped_column(JSON, default=list)
     cautions: Mapped[list] = mapped_column(JSON, default=list)
     beginner_ok: Mapped[bool] = mapped_column(Boolean, default=True)
+    # 参加が確定した人数。「定員未満のときだけ1増やす」を1回の命令で行い、同時に押されても定員を超えない
+    confirmed_count: Mapped[int] = mapped_column(Integer, default=0)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     published_at: Mapped[datetime | None] = mapped_column(DateTime)
@@ -91,7 +93,25 @@ class Application(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"))
     student_id: Mapped[int] = mapped_column(ForeignKey("students.id"))
-    status: Mapped[str] = mapped_column(String(20), default="notified")  # notified / confirmed / cancelled
+    # notified（案内を送った）/ confirmed（参加確定）/ cancelled（キャンセル）
+    status: Mapped[str] = mapped_column(String(20), default="notified")
+    score: Mapped[int] = mapped_column(Integer, default=0)  # マッチングのスコア
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     job: Mapped[Job] = relationship(back_populates="applications")
+    student: Mapped[Student] = relationship()
+
+
+class Notification(Base):
+    """送った通知の記録。LINEが使えないときは、アプリ内の通知として表示する。"""
+
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recipient_type: Mapped[str] = mapped_column(String(10))  # student / producer
+    recipient_id: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
+    url: Mapped[str | None] = mapped_column(String(200))
+    sent_via_line: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)

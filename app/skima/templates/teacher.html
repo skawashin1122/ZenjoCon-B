@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}参加の承認｜スキマ日南{% endblock %}
+{% block content %}
+<p class="lead">参加の承認</p>
+<p class="hint small">保護者の同意書と学校の許可を確認したらチェックを付けます。両方そろった生徒だけ承認でき、承認された生徒にだけ求人が届きます。</p>
+
+{% for s in students %}
+{% set a = s.approval %}
+<div class="card approval" data-student="{{ s.id }}">
+  <div class="approval-head">
+    <strong>{{ s.nickname }}</strong>
+    <span class="muted">{{ s.grade }}年・{{ s.area }}</span>
+    <span class="state" data-state>{% if a and a.is_approved %}✓ 承認済み{% else %}― 未承認{% endif %}</span>
+  </div>
+  <label class="check"><input type="checkbox" data-check="parent_consent" {% if a and a.parent_consent %}checked{% endif %}> 保護者の同意を確認した</label>
+  <label class="check"><input type="checkbox" data-check="school_permission" {% if a and a.school_permission %}checked{% endif %}> 学校の許可を確認した</label>
+  <button class="mid-btn green" type="button" data-approve {% if not (a and a.parent_consent and a.school_permission) or (a and a.is_approved) %}hidden{% endif %}>承認する</button>
+  <button class="mid-btn outline" type="button" data-revoke {% if not (a and a.is_approved) %}hidden{% endif %}>承認を取り消す</button>
+  <p class="hint small" data-wait {% if a and a.parent_consent and a.school_permission %}hidden{% endif %}>両方そろうまで承認できません</p>
+</div>
+{% endfor %}
+
+<h2 class="section-title">参加が決まっている予定</h2>
+{% if schedule %}
+<ul class="job-list">
+  {% for app in schedule %}
+  <li><strong>{{ app.student.nickname }}</strong>
+    <span>{{ date_text(app.job.work_date) }} {{ time_text(app.job.start_time) }}〜{{ time_text(app.job.end_time) }}・{{ app.job.area }}地区</span>
+    <a href="/jobs/{{ app.job.id }}">{{ app.job.title }}</a></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="hint">まだありません</p>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script src="/static/teacher.js?v={{ v }}"></script>{% endblock %}
