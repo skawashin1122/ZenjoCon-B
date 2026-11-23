@@ -62,6 +62,9 @@ sudo certbot --nginx -d skima-nichinan.duckdns.org
 - 生産者でログイン → 「写真をとる」「話して伝える」が使える（HTTPS なのでカメラ・マイクが動く）
 - 教員のパスコード：`sudo grep TEACHER_PASSCODE /opt/skima/app/.env`
 
+## 7. LINE をつなぐ
+[LINE設定手順.md](LINE設定手順.md) の E〜G を行います（A〜D は EC2 の前にやっておけます）。
+
 ## よくあること
 | 症状 | 対処 |
 | :--- | :--- |
