@@ -40,6 +40,12 @@ def missing_fields(draft: JobDraft) -> list[str]:
     return missing
 
 
+def fill_rate(draft: JobDraft) -> float:
+    """必要な項目のうち、すでに埋まっている割合（0〜1）。試用テストで「AIの下書きの正確さ」を測る。"""
+    total = len(REQUIRED_FIELDS) + 1  # +1 は「陸上か船上か」
+    return round((total - len(missing_fields(draft))) / total, 3)
+
+
 def follow_up_question(missing: list[str]) -> str | None:
     """足りない項目だけを、1つの質問文にまとめる。"""
     if not missing:

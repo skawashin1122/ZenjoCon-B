@@ -1,0 +1,10 @@
+# Duck DNS にIPアドレスを登録する（duckdns.timer から呼ばれる）
+# 置き場所: /etc/systemd/system/duckdns.service
+[Unit]
+Description=Update Duck DNS record
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/duckdns-update.sh

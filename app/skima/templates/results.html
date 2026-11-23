@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}試用結果｜スキマ日南{% endblock %}
+{% block content %}
+{% macro num(v, unit="", digits=1) %}{% if v is none %}―{% else %}{{ ("%." ~ digits ~ "f") | format(v) }}{{ unit }}{% endif %}{% endmacro %}
+{% macro pct(v) %}{% if v is none %}―{% else %}{{ "%.0f" | format(v * 100) }}%{% endif %}{% endmacro %}
+
+<p class="lead">試用テストの結果</p>
+<p class="hint small">アプリが自動で記録した値と、アンケートの平均です。発表のグラフには「CSVでダウンロード」を使ってください。</p>
+
+<h2 class="section-title">求人づくり（生産者）</h2>
+<div class="stat-grid">
+  <div class="stat"><span class="stat-label">公開した求人</span><span class="stat-value">{{ s.published }}件</span>
+    <span class="stat-sub">途中でやめた下書き {{ s.abandoned }}件</span></div>
+  <div class="stat"><span class="stat-label">作成時間（中央値）</span><span class="stat-value">{{ num(s.create_seconds_median, "秒", 0) }}</span>
+    <span class="stat-sub">最長 {{ num(s.create_seconds_max, "秒", 0) }}／目標60秒以内</span></div>
+  <div class="stat"><span class="stat-label">AIの最初の下書きで埋まった項目</span><span class="stat-value">{{ pct(s.fill_rate_mean) }}</span>
+    <span class="stat-sub">目標80%以上</span></div>
+  <div class="stat"><span class="stat-label">聞き直し（平均）</span><span class="stat-value">{{ num(s.followups_mean, "回") }}</span>
+    <span class="stat-sub">AIの処理 平均 {{ num(s.ai_seconds_mean, "秒") }}</span></div>
+</div>
+
+<h2 class="section-title">マッチング</h2>
+<div class="stat-grid">
+  <div class="stat"><span class="stat-label">充足率</span><span class="stat-value">{{ pct(s.fulfillment) }}</span>
+    <span class="stat-sub">参加決定 {{ s.confirmed_total }}人／募集 {{ s.headcount_total }}人</span></div>
+</div>
+
+{% for role, label in [("producer", "生産者"), ("student", "高校生")] %}
+{% set sv = s.surveys[role] %}
+<h2 class="section-title">アンケート（{{ label }}・{{ sv.n }}人）</h2>
+{% if sv.n %}
+<ul class="bar-list">
+  {% for q in questions[role] %}
+  {% set m = sv.means[loop.index0] %}
+  <li><span class="bar-q">{{ q }}</span>
+    <span class="bar-track" aria-hidden="true"><span class="bar-fill" style="width: {{ (m / 5 * 100) | round }}%"></span></span>
+    <span class="bar-v">{{ num(m) }} / 5</span></li>
+  {% endfor %}
+</ul>
+{% if sv.comments %}
+<details><summary>ひとこと（{{ sv.comments | length }}件）</summary>
+  <ul class="notice-list">{% for c in sv.comments %}<li>{{ c }}</li>{% endfor %}</ul>
+</details>
+{% endif %}
+{% else %}
+<p class="hint">まだ回答がありません</p>
+{% endif %}
+{% endfor %}
+
+<a class="mid-btn outline" href="/teacher/results.csv" style="margin-top:24px">CSVでダウンロード（求人ごとの計測値）</a>
+<a class="mid-btn outline" href="/teacher">承認の画面へ戻る</a>
+{% endblock %}

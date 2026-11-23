@@ -4,7 +4,7 @@ producers（生産者）/ students（学生）/ approvals（承認）/ jobs（�
 """
 from datetime import date, datetime, time
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, ForeignKey, Integer, String, Text, Time, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, Time, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -17,6 +17,9 @@ class Producer(Base):
     name: Mapped[str] = mapped_column(String(50))
     area: Mapped[str] = mapped_column(String(20))  # 地区名まで（番地は持たない）
     line_user_id: Mapped[str | None] = mapped_column(String(64))
+    # LINEの友だちと結びつけるための6けたの番号（30分で無効）
+    link_code: Mapped[str | None] = mapped_column(String(6), index=True)
+    link_code_expires: Mapped[datetime | None] = mapped_column(DateTime)
 
     jobs: Mapped[list["Job"]] = relationship(back_populates="producer")
 
@@ -32,6 +35,9 @@ class Student(Base):
     # 空き時間: [{"date": "2026-08-23", "start": "06:00", "end": "12:00"}, ...]
     available_slots: Mapped[list] = mapped_column(JSON, default=list)
     line_user_id: Mapped[str | None] = mapped_column(String(64))
+    # LINEの友だちと結びつけるための6けたの番号（30分で無効）
+    link_code: Mapped[str | None] = mapped_column(String(6), index=True)
+    link_code_expires: Mapped[datetime | None] = mapped_column(DateTime)
 
     approval: Mapped["Approval | None"] = relationship(back_populates="student", uselist=False)
 
@@ -79,6 +85,13 @@ class Job(Base):
     # 参加が確定した人数。「定員未満のときだけ1増やす」を1回の命令で行い、同時に押されても定員を超えない
     confirmed_count: Mapped[int] = mapped_column(Integer, default=0)
 
+    # --- 試用テストの計測（自動で記録） ---
+    ai_first_draft: Mapped[dict | None] = mapped_column(JSON)  # AIが最初に作った下書き
+    ai_seconds: Mapped[float | None] = mapped_column(Float)  # AIの処理にかかった秒数（合計）
+    first_fill_rate: Mapped[float | None] = mapped_column(Float)  # 最初の下書きで埋まっていた項目の割合
+    followup_count: Mapped[int] = mapped_column(Integer, default=0)  # 声で聞き直した回数
+    create_seconds: Mapped[float | None] = mapped_column(Float)  # 最初にボタンを押してから公開までの秒数
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     published_at: Mapped[datetime | None] = mapped_column(DateTime)
 
@@ -114,4 +127,21 @@ class Notification(Base):
     text: Mapped[str] = mapped_column(Text)
     url: Mapped[str | None] = mapped_column(String(200))
     sent_via_line: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+
+class Survey(Base):
+    """試用テストのアンケート（5段階）。"""
+
+    __tablename__ = "surveys"
+    __table_args__ = (UniqueConstraint("role", "respondent_id", "job_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    role: Mapped[str] = mapped_column(String(10))  # producer / student
+    respondent_id: Mapped[int] = mapped_column(Integer)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"))
+    q1: Mapped[int] = mapped_column(Integer)
+    q2: Mapped[int] = mapped_column(Integer)
+    q3: Mapped[int] = mapped_column(Integer)
+    comment: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)

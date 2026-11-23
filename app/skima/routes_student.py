@@ -34,7 +34,7 @@ def student_home(request: Request, student: Student = Depends(get_student), db: 
     )
     return render(
         request, "student.html",
-        student=student, offers=offers_for(db, student), notices=notices,
+        student=student, me=student, offers=offers_for(db, student), notices=notices,
         slots=upcoming[:7], date_text=date_text, time_text=time_text,
         approved=bool(student.approval and student.approval.is_approved),
     )

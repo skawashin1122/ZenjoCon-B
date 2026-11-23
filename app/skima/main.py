@@ -20,6 +20,8 @@ from .db import Base, SessionLocal, engine
 from .models import Approval, Producer, Student
 from .routes_producer import router as producer_router
 from .routes_student import router as student_router
+from .routes_survey import router as survey_router
+from .routes_line import router as line_router
 from .routes_teacher import router as teacher_router
 from .web import BASE_DIR, render
 
@@ -79,6 +81,8 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(producer_router)
 app.include_router(student_router)
 app.include_router(teacher_router)
+app.include_router(survey_router)
+app.include_router(line_router)
 
 
 @app.exception_handler(auth.LoginRequired)

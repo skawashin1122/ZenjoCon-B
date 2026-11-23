@@ -26,7 +26,8 @@
 <ul class="job-list">
   {% for a in confirmed %}
   <li><a href="/jobs/{{ a.job.id }}">{{ a.job.title }}</a>
-    <span>{{ date_text(a.job.work_date) }} {{ time_text(a.job.start_time) }}〜{{ time_text(a.job.end_time) }}・{{ a.job.area }}地区</span></li>
+    <span>{{ date_text(a.job.work_date) }} {{ time_text(a.job.start_time) }}〜{{ time_text(a.job.end_time) }}・{{ a.job.area }}地区</span>
+    <a href="/survey/{{ a.job.id }}">作業のあと：感想を教える（3問）</a></li>
   {% endfor %}
 </ul>
 {% else %}
@@ -47,5 +48,7 @@
   <label>まで <input type="time" name="end" value="12:00" required></label>
   <button class="mid-btn blue" type="submit">空き時間を追加</button>
 </form>
+
+{% include "_line_link.html" %}
 {% endblock %}
 {% block scripts %}<script src="/static/student.js?v={{ v }}"></script>{% endblock %}

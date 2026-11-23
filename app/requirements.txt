@@ -9,3 +9,4 @@ google-genai
 pytest
 httpx
 itsdangerous
+boto3

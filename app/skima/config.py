@@ -44,6 +44,15 @@ class Settings(BaseSettings):
     # 通知に載せるリンクの先頭（例: https://skima.example.jp）
     base_url: str = "http://localhost:8000"
 
+    # LINE の Webhook 署名を確かめる「チャネルシークレット」
+    line_channel_secret: str = ""
+    # 友だち追加のURL（例: https://line.me/R/ti/p/@xxxx）。画面に「友だち追加」ボタンを出す
+    line_bot_url: str = ""
+
+    # S3（写真・音声の一時保存）。空ならパソコンのフォルダで代用
+    s3_bucket: str = ""
+    aws_region: str = "us-east-1"
+
     @property
     def use_line(self) -> bool:
         return bool(self.line_channel_access_token)

@@ -22,6 +22,9 @@
 
   <p class="hint">日南弁でだいじょうぶ。<br>例：「明日の朝8時から2人、ミカン箱の積み込み」</p>
   <p class="hint small">※ 人の顔や車のナンバーは写さないでください</p>
+  <button id="btn-howto" class="link-btn" type="button">❔ 使い方を見る</button>
+
+  {% include "_line_link.html" %}
 
   {% if notices %}
   <h2 class="section-title">お知らせ</h2>
@@ -71,10 +74,34 @@
     <p class="done-mark" aria-hidden="true">✓</p>
     <p class="lead">公開しました</p>
     <p id="done-note"></p>
+    <a id="survey-link" class="mid-btn green" href="#">使ってみた感想を教えてください（3問）</a>
     <a id="done-link" class="mid-btn outline" href="#">学生に届く画面を見る</a>
     <button id="btn-new" class="mid-btn outline" type="button">べつの求人をつくる</button>
   </div>
 </section>
 
+<!-- はじめて使う人への案内（3枚） -->
+<div id="onboard" class="onboard" role="dialog" aria-modal="true" aria-labelledby="onboard-title" hidden>
+  <div class="onboard-card">
+    <div class="onboard-step" data-step="0">
+      <div class="onboard-icon" aria-hidden="true">📷</div>
+      <p class="onboard-title" id="onboard-title">① 写真をとる</p>
+      <p>作業する物や場所を1枚とります。<br>（とらなくても大丈夫です）</p>
+    </div>
+    <div class="onboard-step" data-step="1" hidden>
+      <div class="onboard-icon" aria-hidden="true">🎤</div>
+      <p class="onboard-title">② 話して伝える</p>
+      <p>「いつ・何時から何時まで・何人・何の作業・時給」をいつもの言葉で話します。日南弁でOK。</p>
+    </div>
+    <div class="onboard-step" data-step="2" hidden>
+      <div class="onboard-icon" aria-hidden="true">✅</div>
+      <p class="onboard-title">③ 聞いて公開</p>
+      <p>AIが作った下書きを読み上げます。よければ「これで公開」。条件に合う高校生にだけ届きます。</p>
+    </div>
+    <div class="onboard-dots" aria-hidden="true"><span class="on"></span><span></span><span></span></div>
+    <button id="onboard-next" class="mid-btn green" type="button">つぎへ</button>
+    <button id="onboard-skip" class="link-btn" type="button">とばす</button>
+  </div>
+</div>
 {% endblock %}
 {% block scripts %}<script src="/static/producer.js?v={{ v }}"></script>{% endblock %}

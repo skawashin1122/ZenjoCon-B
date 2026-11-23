@@ -1,7 +1,9 @@
 """生産者の画面とAPI：写真＋声 → 下書き → 聞き直し → 公開 → 案内を送る。"""
+import time
 from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -12,6 +14,8 @@ from .config import Settings, get_settings
 from .db import get_db
 from .jobs import apply_draft, date_text, draft_from_job, speech_text, time_text
 from .models import Job, Notification, Producer
+from .schemas import JobDraft
+from .storage import TemporaryUploads, get_storage
 from .web import render
 
 router = APIRouter()
@@ -82,7 +86,7 @@ def producer_home(request: Request, producer: Producer = Depends(get_producer), 
             .limit(5)
         )
     )
-    return render(request, "producer.html", jobs=jobs, notices=notices, date_text=date_text)
+    return render(request, "producer.html", me=producer, jobs=jobs, notices=notices, date_text=date_text)
 
 
 @router.post("/api/drafts")
@@ -98,16 +102,34 @@ async def create_draft(
     voice = await read_upload(audio, "audio", settings)
     if image is None and voice is None:
         raise HTTPException(400, "写真か声を送ってください")
-    try:
-        draft = ai.generate_draft(settings, image, voice, date.today())
-    except ai.AIError:
-        raise HTTPException(502, "うまく聞き取れませんでした。もう一度話してください。")
-    # 写真・音声はここで使い終わり。保存せずに捨てる（プライバシー保護）
+    draft, seconds = await run_in_threadpool(_analyze, settings, image, voice, None)
     job = Job(producer_id=producer.id, status="draft")
     apply_draft(job, draft)
+    # 試用テストの計測：AIの最初の下書き・かかった秒数・最初に埋まっていた項目の割合
+    job.ai_first_draft = draft.model_dump(mode="json")
+    job.ai_seconds = seconds
+    job.first_fill_rate = rules.fill_rate(draft)
     db.add(job)
     db.commit()
     return draft_response(job, settings)
+
+
+def _analyze(settings: Settings, image: ai.Media | None, voice: ai.Media | None, current: JobDraft | None):
+    """写真・音声をS3に一時保存 → AIで解析 → 必ず削除。（かかった秒数も返す）"""
+    started = time.monotonic()
+    with TemporaryUploads(get_storage(settings)) as tmp:
+        for media in (image, voice):
+            if media:
+                tmp.put(media.data, media.mime_type)
+        try:
+            if current is None:
+                draft = ai.generate_draft(settings, image, voice, date.today())
+            else:
+                draft = ai.refine_draft(settings, current, voice, date.today())
+        except ai.AIError:
+            raise HTTPException(502, "うまく聞き取れませんでした。もう一度話してください。")
+    # with を抜けた時点で、写真・音声は削除済み（プライバシー保護）
+    return draft, round(time.monotonic() - started, 2)
 
 
 @router.post("/api/jobs/{job_id}/answer")
@@ -125,11 +147,10 @@ async def answer_question(
     voice = await read_upload(audio, "audio", settings)
     if voice is None:
         raise HTTPException(400, "声を送ってください")
-    try:
-        draft = ai.refine_draft(settings, draft_from_job(job), voice, date.today())
-    except ai.AIError:
-        raise HTTPException(502, "うまく聞き取れませんでした。もう一度話してください。")
+    draft, seconds = await run_in_threadpool(_analyze, settings, None, voice, draft_from_job(job))
     apply_draft(job, draft)
+    job.followup_count = (job.followup_count or 0) + 1  # 聞き直した回数
+    job.ai_seconds = (job.ai_seconds or 0) + seconds
     db.commit()
     return draft_response(job, settings)
 
@@ -137,6 +158,7 @@ async def answer_question(
 @router.post("/api/jobs/{job_id}/publish")
 def publish(
     job_id: int,
+    client_seconds: float | None = Form(None),
     producer: Producer = Depends(get_producer),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
@@ -150,6 +172,11 @@ def publish(
     if job.status == "draft":
         job.status = "published"
         job.published_at = datetime.now()
+        # 計測：スマホ側で測った「最初のボタン〜公開」の秒数。おかしな値ならサーバー側の時間で代用
+        if client_seconds is not None and 0 < client_seconds < 3600:
+            job.create_seconds = round(client_seconds, 1)
+        else:
+            job.create_seconds = round((job.published_at - job.created_at).total_seconds() + (job.ai_seconds or 0), 1)
         db.flush()
         offered = len(send_offers(db, settings, job))
         db.commit()

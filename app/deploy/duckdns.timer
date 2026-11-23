@@ -1,0 +1,13 @@
+# 起動したときと、30分ごとに Duck DNS を更新する
+# （Learner Lab で EC2 が止まって再開し、IPが変わっても自動で追いつく）
+# 置き場所: /etc/systemd/system/duckdns.timer
+[Unit]
+Description=Update Duck DNS every 30 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

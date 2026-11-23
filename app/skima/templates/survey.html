@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}アンケート｜スキマ日南{% endblock %}
+{% block content %}
+<p class="lead">使ってみた感想を教えてください</p>
+<p class="hint small">「{{ job.title }}」について。答えは改善と発表（試用テストの結果）に使います。名前は出しません。</p>
+{% if answered %}<p class="ok-box">✓ 回答ずみです（もう一度答えると上書きされます）</p>{% endif %}
+
+<form id="survey-form">
+  {% for q in questions %}
+  {% set qi = loop.index %}
+  <fieldset class="likert">
+    <legend>{{ qi }}. {{ q }}</legend>
+    <div class="likert-row">
+      {% for label in scale %}
+      <label class="likert-opt">
+        <input type="radio" name="q{{ qi }}" value="{{ loop.index }}" required
+          {% if answered and answered["q" ~ qi] == loop.index %}checked{% endif %}>
+        <span>{{ loop.index }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="likert-ends"><span>そう思わない</span><span>とてもそう思う</span></div>
+  </fieldset>
+  {% endfor %}
+  <label class="comment-label" for="comment">ひとこと（なくてもOK）</label>
+  <textarea id="comment" name="comment" rows="3" maxlength="500">{{ answered.comment if answered and answered.comment else "" }}</textarea>
+  <button class="big-btn green" type="submit">送る</button>
+</form>
+<section id="survey-done" class="done" hidden>
+  <p class="done-mark" aria-hidden="true">✓</p>
+  <p class="lead">ありがとうございました</p>
+  <a class="mid-btn outline" href="/">はじめの画面へ</a>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  const form = document.getElementById("survey-form");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const r = await skima.send("/api/survey/{{ job.id }}", "POST", {
+      q1: Number(fd.get("q1")), q2: Number(fd.get("q2")), q3: Number(fd.get("q3")),
+      comment: fd.get("comment") || null,
+    });
+    if (r) { form.hidden = true; document.getElementById("survey-done").hidden = false; }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,34 @@
+<h2 class="section-title">LINEで受け取る</h2>
+{% if me.line_user_id %}
+<p class="ok-box">✓ LINEとつながっています</p>
+<button class="link-btn" type="button" id="line-unlink">LINEとのつながりを外す</button>
+{% else %}
+<p class="hint small">つなぐと、お知らせがLINEにも届きます。</p>
+<button class="mid-btn outline" type="button" id="line-code-btn">LINEとつなぐ番号を出す</button>
+<div id="line-code-box" class="card" hidden>
+  <p>① LINEで「スキマ日南」を友だち追加</p>
+  <a id="line-bot-link" class="mid-btn green" href="#" target="_blank" rel="noopener" hidden>友だち追加する</a>
+  <p>② この番号をトークに送る（<span id="line-code-min"></span>分有効）</p>
+  <p class="line-code" id="line-code"></p>
+</div>
+{% endif %}
+<script>
+  (() => {
+    const btn = document.getElementById("line-code-btn");
+    if (btn) btn.addEventListener("click", async () => {
+      const r = await skima.send("/api/me/line-code");
+      if (!r) return;
+      document.getElementById("line-code").textContent = r.code.replace(/(\d{3})(\d{3})/, "$1 $2");
+      document.getElementById("line-code-min").textContent = r.minutes;
+      const link = document.getElementById("line-bot-link");
+      if (r.bot_url) { link.href = r.bot_url; link.hidden = false; }
+      document.getElementById("line-code-box").hidden = false;
+      btn.textContent = "番号を出し直す";
+    });
+    const un = document.getElementById("line-unlink");
+    if (un) un.addEventListener("click", async () => {
+      if (!confirm("LINEとのつながりを外しますか？ お知らせはアプリの中だけになります。")) return;
+      if (await skima.send("/api/me/line-unlink")) location.reload();
+    });
+  })();
+</script>

@@ -133,3 +133,38 @@ button, .mid-btn { font-family: inherit; cursor: pointer; }
 .slot-form input { min-height: 48px; font-size: 18px; padding: 4px 8px; border: 2px solid var(--text); border-radius: 8px; }
 
 .toast { position: fixed; left: 16px; right: 16px; bottom: 16px; max-width: 448px; margin: 0 auto; z-index: 10; }
+
+/* ---- 第3週：アンケート・試用結果・使い方案内 ---- */
+.likert { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin: 0 0 16px; }
+.likert legend { font-weight: 700; padding: 0 4px; }
+.likert-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.likert-opt { position: relative; }
+.likert-opt input { position: absolute; opacity: 0; inset: 0; }
+.likert-opt span { display: flex; align-items: center; justify-content: center; min-height: 52px; border: 2px solid var(--text); border-radius: 10px; font-size: 20px; font-weight: 700; background: #fff; }
+.likert-opt input:checked + span { background: var(--green); border-color: var(--green); color: #fff; }
+.likert-opt input:focus-visible + span { outline: 3px solid #e3a400; outline-offset: 2px; }
+.likert-ends { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); margin-top: 4px; }
+.comment-label { display: block; font-weight: 700; margin-bottom: 4px; }
+textarea { width: 100%; font: inherit; padding: 8px; border: 2px solid var(--text); border-radius: 10px; margin-bottom: 16px; }
+
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
+.stat-label { font-size: 15px; color: var(--muted); font-weight: 700; }
+.stat-value { font-size: 28px; font-weight: 700; }
+.stat-sub { font-size: 14px; color: var(--muted); }
+.bar-list { list-style: none; padding: 0; margin: 0 0 8px; }
+.bar-list li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin-bottom: 12px; }
+.bar-q { grid-column: 1 / -1; font-weight: 700; }
+.bar-track { height: 14px; background: var(--line); border-radius: 7px; overflow: hidden; align-self: center; }
+.bar-fill { display: block; height: 100%; background: var(--green); }
+.bar-v { font-weight: 700; }
+
+.onboard { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; z-index: 20; }
+.onboard-card { background: #fff; width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; padding: 24px 16px 16px; }
+.onboard-step { text-align: center; }
+.onboard-icon { font-size: 64px; line-height: 1.1; }
+.onboard-title { font-size: 26px; font-weight: 700; margin: 8px 0; }
+.onboard-dots { display: flex; justify-content: center; gap: 8px; margin: 12px 0; }
+.onboard-dots span { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--green); }
+.onboard-dots span.on { background: var(--green); }
+.line-code { font-size: 40px; font-weight: 700; letter-spacing: 6px; text-align: center; margin: 4px 0; font-variant-numeric: tabular-nums; }

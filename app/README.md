@@ -2,7 +2,7 @@
 
 写真と声だけで、農家・漁師が短時間のお手伝いを募集できるWebアプリ。
 
-## いまできること（第2週まで）
+## いまできること（第3週まで）
 | 機能 | 状態 |
 | :--- | :--- |
 | デモ用ログイン（生産者・生徒は選ぶだけ、教員はパスコード） | ✅ |
@@ -15,8 +15,12 @@
 | 教員：保護者同意・学校許可のチェック → 承認／取り消し、参加予定の一覧 | ✅ |
 | 高校生：お知らせ・参加／キャンセル・空き時間の登録 | ✅ |
 | 求人カードは、案内を受けた生徒・その生産者・教員だけが見られる | ✅ |
-| EC2用の設定（Nginx・systemd・PostgreSQL・HTTPS） | ✅ ファイルのみ（未構築） |
-| LINEの友だち登録と生徒の結びつけ（Webhook） | 第3週（LINE公式アカウント作成後） |
+| 写真・音声を S3 に一時保存 → 解析後すぐ削除（失敗しても削除）＋1日で自動削除 | ✅ 鍵なし（LabInstanceProfile） |
+| 試用テストの自動計測：作成時間・最初の下書きの充足率・聞き直し回数・AI処理時間 | ✅ |
+| アンケート（生産者・高校生 各3問・5段階）と、教員の「試用結果」画面・CSV | ✅ |
+| はじめて使う生産者への使い方案内（3画面） | ✅ |
+| LINEの友だちと利用者の結びつけ（6けたの番号・署名チェック付きWebhook） | ✅ コードのみ（LINE公式アカウント作成後に確認） |
+| EC2用の設定（Nginx・systemd・PostgreSQL・HTTPS・S3バケット作成） | ✅ ファイルのみ（未構築）→ [deploy/EC2手順.md](deploy/EC2手順.md) |
 
 ## パソコンで動かす（Windows）
 
@@ -53,6 +57,10 @@ DISABLE_SQLALCHEMY_CEXT=1 .venv/Scripts/python -m pip install --force-reinstall 
 | `TEACHER_PASSCODE` | 教員画面のパスコード |
 | `SECRET_KEY` | ログイン状態の署名用。空なら起動のたびに作り直す（ログインが切れる） |
 | `LINE_CHANNEL_ACCESS_TOKEN` | 空なら LINE には送らず、アプリ内のお知らせだけ |
+| `LINE_CHANNEL_SECRET` / `LINE_BOT_URL` | Webhook の署名チェック用／友だち追加のURL |
+| `S3_BUCKET` / `AWS_REGION` | 写真・音声の一時保存先。空ならパソコンの `tmp_uploads` で代用 |
+| `LINE_CHANNEL_SECRET` / `LINE_BOT_URL` | Webhook の署名チェック用／友だち追加のURL |
+| `S3_BUCKET` / `AWS_REGION` | 写真・音声の一時保存先。空ならパソコンの `tmp_uploads` で代用 |
 | `BASE_URL` | 通知に載せるリンクの先頭 |
 
 ### テスト
@@ -61,11 +69,13 @@ DISABLE_SQLALCHEMY_CEXT=1 .venv/Scripts/python -m pip install --force-reinstall 
 ```
 
 ## EC2 に公開する（Ubuntu Server 26.04 LTS）
-1. EC2 を起動し、Elastic IP を付ける。セキュリティグループで 22・80・443 を開ける
-2. ドメイン名の A レコードを Elastic IP に向ける（方法は先生と相談：学校のドメイン／無料DNS）
-3. EC2 で `sudo bash setup.sh <ドメイン名>`（`deploy/setup.sh`）
-4. `/opt/skima/app/.env` に `GEMINI_API_KEY`・`LINE_CHANNEL_ACCESS_TOKEN` を書き、`sudo systemctl restart skima`
-5. `sudo certbot --nginx -d <ドメイン名>` で HTTPS にする
+詳しくは [deploy/EC2手順.md](deploy/EC2手順.md)。ドメインは **Duck DNS**（`<サブドメイン>.duckdns.org`）を使う。
+1. Duck DNS でサブドメインを作り、トークンを控える
+2. EC2 を起動（`LabInstanceProfile` を付ける）し、Elastic IP を付ける。セキュリティグループで 22・80・443 を開ける
+3. EC2 で `sudo bash setup.sh <サブドメイン>`（`deploy/setup.sh`）。Duck DNS のトークンを聞かれたら貼り付ける
+   → Duck DNS へのIP登録（起動時と30分ごとに自動更新）・S3バケット作成・Nginx・systemd まで自動
+4. `/opt/skima/app/.env` に `GEMINI_API_KEY` を書き、`sudo systemctl restart skima`
+5. `sudo certbot --nginx -d <サブドメイン>.duckdns.org` で HTTPS にする
 
 GitHub のリポジトリが非公開の場合は、EC2 から clone できるように「デプロイキー」を設定する。
 

@@ -6,6 +6,12 @@
 
   let photoBlob = null;
   let currentJob = null;
+  let startedAt = null; // 試用テストの計測：最初にボタンを押した時刻
+
+  // 「写真をとる」「話して伝える」のどちらかを最初に押した時刻を覚える
+  for (const id of ["btn-photo", "btn-talk"]) {
+    $(id).addEventListener("click", () => { startedAt ??= Date.now(); }, { capture: true });
+  }
 
   // ---------- 画面の切り替え ----------
   function show(step) {
@@ -190,9 +196,12 @@
   $("btn-speak").addEventListener("click", () => currentJob && speak(currentJob.speech));
 
   $("btn-publish").addEventListener("click", async () => {
-    const data = await post(`/api/jobs/${currentJob.job_id}/publish`, new FormData());
+    const form = new FormData();
+    if (startedAt) form.append("client_seconds", ((Date.now() - startedAt) / 1000).toFixed(1));
+    const data = await post(`/api/jobs/${currentJob.job_id}/publish`, form);
     if (!data) return;
     $("done-link").href = data.url;
+    $("survey-link").href = `/survey/${data.job_id}`;
     if (!data.visible_to_high_school) {
       $("done-note").textContent = "この作業は高校生には案内しません（" + data.high_school_blockers.join("・") + "）。";
     } else if (data.offered > 0) {
@@ -207,10 +216,34 @@
   function reset() {
     currentJob = null;
     photoBlob = null;
+    startedAt = null;
     $("photo-input").value = "";
     $("photo-preview").hidden = true;
     show("home");
   }
+  // ---------- はじめて使う人への案内（3枚） ----------
+  // 見たかどうかはこのスマホの中だけに覚える（使えない環境では毎回出さない）
+  const ONBOARD_KEY = "skima_onboarded";
+  let onboardStep = 0;
+  function showOnboardStep(i) {
+    onboardStep = i;
+    document.querySelectorAll(".onboard-step").forEach((el) => (el.hidden = Number(el.dataset.step) !== i));
+    document.querySelectorAll(".onboard-dots span").forEach((el, k) => el.classList.toggle("on", k === i));
+    $("onboard-next").textContent = i === 2 ? "はじめる" : "つぎへ";
+    $("onboard-next").focus();
+  }
+  function openOnboard() { $("onboard").hidden = false; showOnboardStep(0); }
+  function closeOnboard() {
+    $("onboard").hidden = true;
+    try { localStorage.setItem(ONBOARD_KEY, "1"); } catch {}
+  }
+  $("onboard-next").addEventListener("click", () => (onboardStep < 2 ? showOnboardStep(onboardStep + 1) : closeOnboard()));
+  $("onboard-skip").addEventListener("click", closeOnboard);
+  $("btn-howto").addEventListener("click", openOnboard);
+  let seen = true;
+  try { seen = localStorage.getItem(ONBOARD_KEY) === "1"; } catch {}
+  if (!seen) openOnboard();
+
   $("btn-retry").addEventListener("click", reset);
   $("btn-new").addEventListener("click", () => location.reload()); // 求人の一覧も新しくする
 })();
