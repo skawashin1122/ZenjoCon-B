@@ -8,7 +8,7 @@
 <h2 class="section-title"><span class="role-icon green" aria-hidden="true">生</span>生産者</h2>
 {% for p in producers %}
 <form method="post" action="/login">
-  <input type="hidden" name="role" value="producer"><input type="hidden" name="user_id" value="{{ p.id }}">
+  <input type="hidden" name="role" value="producer">{% if next_path %}<input type="hidden" name="next" value="{{ next_path }}">{% endif %}<input type="hidden" name="user_id" value="{{ p.id }}">
   <button class="mid-btn green" type="submit">{{ p.name }}（{{ p.area }}）</button>
 </form>
 {% endfor %}
@@ -17,7 +17,7 @@
 <div class="grid-2">
 {% for s in students %}
 <form method="post" action="/login">
-  <input type="hidden" name="role" value="student"><input type="hidden" name="user_id" value="{{ s.id }}">
+  <input type="hidden" name="role" value="student">{% if next_path %}<input type="hidden" name="next" value="{{ next_path }}">{% endif %}<input type="hidden" name="user_id" value="{{ s.id }}">
   <button class="mid-btn blue" type="submit">{{ s.nickname }}</button>
 </form>
 {% endfor %}
@@ -25,7 +25,7 @@
 
 <h2 class="section-title"><span class="role-icon yellow" aria-hidden="true">教</span>教員</h2>
 <form method="post" action="/login" class="passcode-form">
-  <input type="hidden" name="role" value="teacher">
+  <input type="hidden" name="role" value="teacher">{% if next_path %}<input type="hidden" name="next" value="{{ next_path }}">{% endif %}
   <label for="passcode">パスコード</label>
   <input id="passcode" name="passcode" type="password" autocomplete="current-password"
     autocapitalize="none" autocorrect="off" spellcheck="false" required>

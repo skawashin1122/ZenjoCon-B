@@ -5,10 +5,12 @@
 LINEへの送信に失敗しても、アプリ内の通知は残るので、処理全体は止めない。
 """
 import logging
+import re
 
 import httpx
 from sqlalchemy.orm import Session
 
+from .auth import make_link_token
 from .config import Settings
 from .models import Notification, Producer, Student
 
@@ -20,9 +22,17 @@ def notify(db: Session, settings: Settings, recipient: Student | Producer, text:
     kind = "student" if isinstance(recipient, Student) else "producer"
     n = Notification(recipient_type=kind, recipient_id=recipient.id, text=text, url=url)
     if settings.use_line and recipient.line_user_id:
-        n.sent_via_line = _push_line(settings, recipient.line_user_id, text, url)
+        n.sent_via_line = _push_line(settings, recipient.line_user_id, text, _line_url(recipient, url))
     db.add(n)
     return n
+
+
+def _line_url(recipient: Student | Producer, url: str | None) -> str | None:
+    """生徒への求人のリンクには、その生徒・その求人だけに使える通行証を付ける（LINEの中のブラウザでも開けるように）。"""
+    m = re.fullmatch(r"/jobs/(\d+)", url or "")
+    if isinstance(recipient, Student) and m:
+        return f"{url}?t={make_link_token(recipient.id, int(m.group(1)))}"
+    return url
 
 
 def _push_line(settings: Settings, line_user_id: str, text: str, url: str | None) -> bool:

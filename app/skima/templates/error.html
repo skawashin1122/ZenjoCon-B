@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}お知らせ｜スキマ日南{% endblock %}
+{% block content %}
+<div class="done">
+  <p class="done-mark" aria-hidden="true">!</p>
+  <p class="lead">{{ message }}</p>
+  <p class="hint">期限が切れたか、この画面を見る権限がない可能性があります。</p>
+  <a class="mid-btn outline" href="/">はじめの画面へ</a>
+</div>
+{% endblock %}

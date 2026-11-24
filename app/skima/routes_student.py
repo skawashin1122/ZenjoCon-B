@@ -2,13 +2,14 @@
 from datetime import date, time
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import stats
 from .applications import ApplyError, cancel, confirm, offers_for
-from .auth import current_user, get_student
+from .auth import LoginRequired, current_user, get_student, login, read_link_token
 from .config import Settings, get_settings
 from .db import get_db
 from .jobs import date_text, time_text
@@ -41,11 +42,27 @@ def student_home(request: Request, student: Student = Depends(get_student), db: 
 
 
 @router.get("/jobs/{job_id}")
-def job_card(job_id: int, request: Request, db: Session = Depends(get_db)):
-    """求人カード。見られるのは、案内を受け取った学生・その求人の生産者・教員だけ。"""
+def job_card(job_id: int, request: Request, t: str | None = None, db: Session = Depends(get_db)):
+    """求人カード。見られるのは、案内を受け取った学生・その求人の生産者・教員だけ。
+
+    t：LINE の通知に付けた通行証。正しければ、その生徒としてログインしてから開く。
+    """
     job = db.get(Job, job_id)
+    if t is not None:
+        student_id = read_link_token(t, job_id)
+        student = db.get(Student, student_id) if student_id else None
+        has_offer = student is not None and db.scalar(
+            select(Application.id).where(Application.job_id == job_id, Application.student_id == student.id)
+        )
+        if has_offer:
+            login(request, "student", student.id, student.nickname)
+        # 通行証をアドレスバーや履歴に残さないよう、付けないURLに移動し直す
+        return RedirectResponse(f"/jobs/{job_id}", status_code=303)
+
     user = current_user(request)
-    if job is None or job.status == "draft" or user is None:
+    if user is None:
+        raise LoginRequired(f"/jobs/{job_id}")
+    if job is None or job.status == "draft":
         raise HTTPException(404, "求人が見つかりません")
     app = None
     if user.role == "student":

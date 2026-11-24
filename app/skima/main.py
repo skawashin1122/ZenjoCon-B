@@ -7,6 +7,8 @@ import secrets
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Form, Request
+from fastapi.exception_handlers import http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
@@ -42,7 +44,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="スキマ日南ファーム＆シー", lifespan=lifespan)
 app.add_middleware(
     SessionMiddleware,
-    secret_key=settings.secret_key or secrets.token_urlsafe(32),
+    secret_key=auth.SECRET,
     same_site="lax",  # ほかのサイトからの送信にはログイン情報を付けない
     https_only=settings.base_url.startswith("https://"),
     max_age=60 * 60 * 24 * 14,
@@ -57,7 +59,19 @@ app.include_router(line_router)
 
 @app.exception_handler(auth.LoginRequired)
 def to_login(request: Request, exc: auth.LoginRequired):
-    return RedirectResponse("/login", status_code=303)
+    return RedirectResponse(auth.login_url(exc.next_path), status_code=303)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_error(request: Request, exc: StarletteHTTPException):
+    """API（/api/・/line/）はJSONのまま。画面を開いたときのエラーは、日本語のページで見せる。"""
+    path = request.url.path
+    if path.startswith(("/api/", "/line/", "/static/")):
+        return await http_exception_handler(request, exc)
+    message = exc.detail if isinstance(exc.detail, str) else "ページを表示できませんでした"
+    if exc.status_code == 404 and message == "Not Found":
+        message = "ページが見つかりません"
+    return render(request, "error.html", status_code=exc.status_code, message=message)
 
 
 HOME = {"producer": "/producer", "student": "/student", "teacher": "/teacher"}
@@ -70,15 +84,19 @@ def index(request: Request):
 
 
 @app.get("/login")
-def login_page(request: Request, error: str | None = None):
+def login_page(request: Request, error: str | None = None, next: str | None = None):
     with SessionLocal() as db:
         producers = list(db.scalars(select(Producer).order_by(Producer.id)))
         students = list(db.scalars(select(Student).order_by(Student.id)))
-    return render(request, "login.html", producers=producers, students=students, error=error)
+    return render(request, "login.html", producers=producers, students=students, error=error,
+                  next_path=auth.safe_next(next))
 
 
 @app.post("/login")
-def login_submit(request: Request, role: str = Form(...), user_id: int = Form(0), passcode: str = Form("")):
+def login_submit(
+    request: Request, role: str = Form(...), user_id: int = Form(0), passcode: str = Form(""),
+    next: str = Form(""),
+):
     with SessionLocal() as db:
         if role == "producer" and (p := db.get(Producer, user_id)):
             auth.login(request, "producer", p.id, p.name)
@@ -87,8 +105,9 @@ def login_submit(request: Request, role: str = Form(...), user_id: int = Form(0)
         elif role == "teacher" and secrets.compare_digest(passcode, settings.teacher_passcode):
             auth.login(request, "teacher", 0, "教員")
         else:
-            return RedirectResponse("/login?error=1", status_code=303)
-    return RedirectResponse(HOME[role], status_code=303)
+            return RedirectResponse(auth.login_url(next, error=True), status_code=303)
+    # ログイン前に開こうとしていた画面があれば、そこへ戻る
+    return RedirectResponse(auth.safe_next(next) or HOME[role], status_code=303)
 
 
 @app.post("/logout")

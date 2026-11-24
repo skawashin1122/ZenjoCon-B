@@ -140,7 +140,8 @@ def test_teacher_needs_both_checks(client):
 def test_wrong_passcode(client):
     r = client.post("/login", data={"role": "teacher", "passcode": "wrong"}, follow_redirects=False)
     assert r.headers["location"] == "/login?error=1"
-    assert client.get("/teacher", follow_redirects=False).headers["location"] == "/login"
+    # ログイン画面へ（ログイン後は元の画面に戻れるよう、戻り先を付ける）
+    assert client.get("/teacher", follow_redirects=False).headers["location"] == "/login?next=/teacher"
 
 
 # ---------- 見てよい人だけが見られる ----------
